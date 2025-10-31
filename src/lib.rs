@@ -753,6 +753,45 @@ impl<T> Slab<T> {
         }
     }
 
+    /// Apply function to each entry.
+    ///
+    /// Passed mutable references to the apply function, can be retained
+    /// after this function call.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use slab::*;
+    ///
+    /// let mut slab = Slab::new();
+    /// let key1 = slab.insert(1);
+    /// let key2 = slab.insert(2);
+    /// {
+    ///     let mut values = Vec::new();
+    ///     slab.apply_mut_all(|_, v| values.push(v));
+    ///     assert_eq!(*values[0], 1);
+    ///     assert_eq!(*values[1], 2);
+    ///     *values[0] = 3;
+    ///     *values[1] = 4;
+    /// }
+    /// assert_eq!(slab[key1], 3);
+    /// assert_eq!(slab[key2], 4);
+    /// ```
+    pub fn apply_mut_all<'a, F>(&'a mut self, mut apply: F)
+    where
+        F: FnMut(usize, &'a mut T),
+    {
+        let mut i = 0;
+        let mut entries = &mut self.entries[..];
+        while let Some((entry, rest)) = entries.split_first_mut() {
+            if let Entry::Occupied(v) = entry {
+                apply(i, v);
+            }
+            entries = rest;
+            i += 1;
+        }
+    }
+
     /// Return two mutable references to the values associated with the two
     /// given keys simultaneously.
     ///
